@@ -38,6 +38,12 @@ class PatchPulseTests(unittest.TestCase):
                 self.assertEqual(main(["--json"]), 0)
         self.assertEqual(json.loads(output.getvalue())["files"], 2)
 
+    def test_fail_above_returns_ci_exit_code(self):
+        with patch("sys.stdin", io.StringIO(SAMPLE)):
+            self.assertEqual(main(["--fail-above", "1"]), 1)
+        with patch("sys.stdin", io.StringIO(SAMPLE)):
+            self.assertEqual(main(["--fail-above", "99"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

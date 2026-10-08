@@ -9,6 +9,12 @@ python3 patch_pulse.py changes.diff
 cat changes.diff | python3 patch_pulse.py --json
 ```
 
+Use `--fail-above N` to make CI fail when the score is at least `N`:
+
+```bash
+git diff origin/main...HEAD | python3 patch_pulse.py --fail-above 60
+```
+
 Example human output:
 
 ```text

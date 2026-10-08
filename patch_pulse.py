@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Score risk signals in a unified diff")
     parser.add_argument("diff", nargs="?", help="diff file; reads stdin when omitted")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument("--fail-above", type=int, metavar="N", help="exit 1 when the score is at least N")
     args = parser.parse_args(argv)
     text = Path(args.diff).read_text() if args.diff else sys.stdin.read()
     pulse = analyze(text)
@@ -76,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Tests touched: {'yes' if pulse.tests_touched else 'no'}")
         if pulse.sensitive_files:
             print("Sensitive files: " + ", ".join(pulse.sensitive_files))
-    return 0
+    return int(args.fail_above is not None and pulse.score >= args.fail_above)
 
 
 if __name__ == "__main__":
