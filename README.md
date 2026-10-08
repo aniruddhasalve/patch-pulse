@@ -15,6 +15,12 @@ Use `--fail-above N` to make CI fail when the score is at least `N`:
 git diff origin/main...HEAD | python3 patch_pulse.py --fail-above 60
 ```
 
+Use `--sarif` to emit SARIF 2.1.0 with a risk result and affected-file locations for GitHub code scanning or other CI dashboards:
+
+```bash
+git diff origin/main...HEAD | python3 patch_pulse.py --sarif > patch-pulse.sarif
+```
+
 Example human output:
 
 ```text

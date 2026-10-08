@@ -44,6 +44,20 @@ class PatchPulseTests(unittest.TestCase):
         with patch("sys.stdin", io.StringIO(SAMPLE)):
             self.assertEqual(main(["--fail-above", "99"]), 0)
 
+    def test_sarif_output_contains_risk_and_locations(self):
+        with patch("sys.stdin", io.StringIO(SAMPLE)):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main(["--sarif"]), 0)
+        sarif = json.loads(output.getvalue())
+        self.assertEqual(sarif["version"], "2.1.0")
+        result = sarif["runs"][0]["results"][0]
+        self.assertEqual(result["level"], "note")
+        self.assertEqual(
+            [x["physicalLocation"]["artifactLocation"]["uri"] for x in result["locations"]],
+            ["app.py", "tests/test_app.py"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,10 @@ class Pulse:
     level: str
 
 
+def _paths(diff: str) -> list[str]:
+    return [match.group(2) for line in diff.splitlines() if (match := _FILE_RE.match(line))]
+
+
 def analyze(diff: str) -> Pulse:
     files: list[str] = []
     additions = deletions = hunks = breaking_lines = 0
@@ -61,15 +65,46 @@ def analyze(diff: str) -> Pulse:
     return Pulse(len(files), additions, deletions, hunks, sensitive, tests_touched, breaking_lines, score, level)
 
 
+def to_sarif(diff: str, pulse: Pulse) -> dict:
+    """Build SARIF 2.1.0 without changing the existing JSON contract."""
+    sarif_level = {"high": "error", "medium": "warning", "low": "note"}[pulse.level]
+    result = {
+        "ruleId": "patch-pulse-risk",
+        "level": sarif_level,
+        "message": {"text": f"{pulse.level.upper()} risk ({pulse.score}/100) across {pulse.files} file(s)."},
+        "properties": {
+            "score": pulse.score,
+            "riskLevel": pulse.level,
+            "testsTouched": pulse.tests_touched,
+            "sensitiveFiles": pulse.sensitive_files,
+        },
+        "locations": [
+            {"physicalLocation": {"artifactLocation": {"uri": path}}}
+            for path in _paths(diff)
+        ],
+    }
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [{
+            "tool": {"driver": {"name": "Patch Pulse", "informationUri": "https://github.com/aniruddhasalve/patch-pulse"}},
+            "results": [result],
+        }],
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Score risk signals in a unified diff")
     parser.add_argument("diff", nargs="?", help="diff file; reads stdin when omitted")
     parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument("--sarif", action="store_true", help="emit SARIF 2.1.0 for code scanning")
     parser.add_argument("--fail-above", type=int, metavar="N", help="exit 1 when the score is at least N")
     args = parser.parse_args(argv)
     text = Path(args.diff).read_text() if args.diff else sys.stdin.read()
     pulse = analyze(text)
-    if args.json:
+    if args.sarif:
+        print(json.dumps(to_sarif(text, pulse), sort_keys=True))
+    elif args.json:
         print(json.dumps(asdict(pulse), sort_keys=True))
     else:
         print(f"{pulse.level.upper()} risk ({pulse.score}/100)")
